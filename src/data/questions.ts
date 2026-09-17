@@ -2,8 +2,8 @@ import { Question } from '../types';
 import { getNumberSequences } from './categories/numberSequences';
 import { getLetterSequences } from './categories/letterSequences';
 import { getLogicalDeduction } from './categories/logicalDeduction';
-import { getVerbalAnalogies } from './categories/verbalAnalogies';
-import { getQuantitative } from './categories/quantitative';
+import { getAlgorithmicReasoning } from './categories/algorithmicReasoning';
+import { getMathematicalLogic } from './categories/mathematicalLogic';
 import { getSpatial } from './categories/spatial';
 import { getVisual } from './categories/visual';
 import { getOddOneOut } from './categories/oddOneOut';
@@ -11,24 +11,24 @@ import { getWorkingMemory } from './categories/workingMemory';
 import { getMixed } from './categories/mixed';
 
 export const questions: Question[] = [
-  ...getNumberSequences(), // 12
-  ...getLetterSequences(), // 10
-  ...getLogicalDeduction(), // 14
-  ...getVerbalAnalogies(), // 10
-  ...getQuantitative(), // 12
-  ...getSpatial(), // 12
-  ...getVisual(), // 16
-  ...getOddOneOut(), // 10
-  ...getWorkingMemory(), // 10
-  ...getMixed(), // 14
+  ...getNumberSequences(),
+  ...getLetterSequences(),
+  ...getLogicalDeduction(),
+  ...getAlgorithmicReasoning(),
+  ...getMathematicalLogic(),
+  ...getSpatial(),
+  ...getVisual(),
+  ...getOddOneOut(),
+  ...getWorkingMemory(),
+  ...getMixed(),
 ];
 
 export const validateQuestions = () => {
   const errors: string[] = [];
   const ids = new Set<string>();
 
-  if (questions.length !== 120) {
-    errors.push(`Expected 120 questions, found ${questions.length}`);
+  if (questions.length < 60) {
+    errors.push(`Expected at least 60 questions, found ${questions.length}`);
   }
 
   questions.forEach((q) => {

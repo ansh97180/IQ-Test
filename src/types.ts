@@ -2,8 +2,8 @@ export type QuestionCategory =
   | 'Number Sequences'
   | 'Letter Sequences'
   | 'Logical Deduction'
-  | 'Verbal Analogies'
-  | 'Quantitative Reasoning'
+  | 'Algorithmic Reasoning'
+  | 'Mathematical Logic'
   | 'Spatial Reasoning'
   | 'Visual Pattern'
   | 'Odd-One-Out'
@@ -74,6 +74,12 @@ export interface AssessmentResults {
   consistencyScore: number;
   provisionalReasoningIndex: number;
   provisionalBand: string;
+  gFactorScore: number;
+  workingMemoryCapacity: number;
+  fluidIntelligence: number;
+  crystallizedIntelligence: number;
+  cognitiveProcessingSpeed: number;
+  guessingPenalty: number;
   completionRate: number; // 0-1
   totalTimeMs: number;
   averageTimePerQuestionMs: number;

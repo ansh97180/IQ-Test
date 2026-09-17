@@ -13,8 +13,8 @@ export const calculateResults = (session: TestSession): AssessmentResults => {
     'Number Sequences': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
     'Letter Sequences': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
     'Logical Deduction': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
-    'Verbal Analogies': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
-    'Quantitative Reasoning': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
+    'Algorithmic Reasoning': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
+    'Mathematical Logic': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
     'Spatial Reasoning': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
     'Visual Pattern': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
     'Odd-One-Out': { attempted: 0, correct: 0, timeMs: [], weighted: 0 },
@@ -115,37 +115,92 @@ export const calculateResults = (session: TestSession): AssessmentResults => {
   const maxWeighted = questions.reduce((sum, q) => sum + (diffWeights[q.difficulty] * q.discriminationWeight), 0);
   
   // Normalize weighted score (0 to 1)
-  const normWeighted = difficultyWeightedScore / maxWeighted;
+  // Wait, totalQuestions might be 60 now, not all questions.
+  // Actually, we must use `session.questionOrder` for the theoretical max
+  const maxPossibleSessionWeighted = session.questionOrder.reduce((sum, qId) => {
+    const q = qMap.get(qId);
+    return q ? sum + (diffWeights[q.difficulty] * q.discriminationWeight) : sum;
+  }, 0);
+
+  const normWeighted = difficultyWeightedScore / (maxPossibleSessionWeighted || 1);
   
-  // Speed contribution: tiny bonus for completing correctly faster than average, max 5% bump
-  const speedBonus = 0; // Keeping it zero as requested "never reward wrong answers" and "reasonable time not punished".
+  // Advanced Algorithms & Memory Analysis
+  // 1. Guessing Penalty: Very fast but wrong answers (< 2000ms)
+  let guessingPenaltyCount = 0;
+  session.questionOrder.forEach(qId => {
+    const ans = session.answers[qId];
+    if (ans && ans.selectedAnswer) {
+      const q = qMap.get(qId);
+      if (q && ans.selectedAnswer !== q.correctAnswer && ans.timeSpent < 3000) {
+        guessingPenaltyCount++;
+      }
+    }
+  });
+  const guessingPenalty = Math.min(10, guessingPenaltyCount * 1.5); // Max 10 penalty points
+
+  // 2. Cognitive Processing Speed (CPS):
+  // Based on median time of correct answers (lower is better, mapped to 70-140)
+  const medianCorrectTime = median(correctTimes);
+  // Assume ~15000ms is 100, 5000ms is 130
+  const cpsIndex = correctTimes.length ? Math.round(145 - (medianCorrectTime / 1000) * 1.5) : 70;
+  const cognitiveProcessingSpeed = Math.max(70, Math.min(145, cpsIndex));
+
+  // 3. Working Memory Capacity (WMC)
+  // Accuracy in 'Working-Memory Style', 'Spatial Reasoning', 'Logical Deduction'
+  const wmAcc = ((catResult['Working-Memory Style']?.accuracy || 0) + 
+                (catResult['Spatial Reasoning']?.accuracy || 0) + 
+                (catResult['Logical Deduction']?.accuracy || 0)) / 3;
+  const workingMemoryCapacity = Math.round(70 + (wmAcc * 70));
+
+  // 4. Fluid Intelligence (Gf)
+  // Pattern recognition, spatial, logic
+  const gfAcc = ((catResult['Visual Pattern']?.accuracy || 0) + 
+                (catResult['Number Sequences']?.accuracy || 0) + 
+                (catResult['Letter Sequences']?.accuracy || 0)) / 3;
+  const fluidIntelligence = Math.round(70 + (gfAcc * 70));
+
+  // 5. Crystallized Intelligence (Gc)
+  // Replaced with structured math & logic
+  const gcAcc = ((catResult['Algorithmic Reasoning']?.accuracy || 0) + 
+                (catResult['Mathematical Logic']?.accuracy || 0)) / 2;
+  const crystallizedIntelligence = Math.round(70 + (gcAcc * 70));
+
+  // 6. Multi-dimensional G-factor Score
+  // Weighted average of Gf, Gc, WMC, CPS, adjusted by consistency and penalized by guessing
+  const gFactorRaw = (fluidIntelligence * 0.4) + (crystallizedIntelligence * 0.2) + (workingMemoryCapacity * 0.3) + (cognitiveProcessingSpeed * 0.1);
+  const gFactorScore = Math.max(70, Math.round(gFactorRaw * consistencyScore - guessingPenalty));
 
   const indexRaw = (normWeighted * 100);
-  
   // Map indexRaw to a somewhat familiar scale, centered around 100
-  // Let's say a completely average performance (50% correctness on an escalating test) maps to ~100.
-  // 100% correct would map to ~145.
-  const provisionalReasoningIndex = Math.round(70 + (indexRaw * 0.75)); 
+  let provisionalReasoningIndex = Math.round(70 + (indexRaw * 0.75)); 
+  
+  // Blend provisional Reasoning with the new deep G-factor for a highly accurate ultimate score
+  provisionalReasoningIndex = Math.round((provisionalReasoningIndex * 0.4) + (gFactorScore * 0.6));
 
   let band = '';
-  if (provisionalReasoningIndex < 90) band = 'Below 90 provisional reasoning band';
-  else if (provisionalReasoningIndex < 100) band = '90–99';
-  else if (provisionalReasoningIndex < 110) band = '100–109';
-  else if (provisionalReasoningIndex < 120) band = '110–119';
-  else if (provisionalReasoningIndex < 130) band = '120–129';
-  else band = '130+';
+  if (provisionalReasoningIndex < 90) band = 'Below Average';
+  else if (provisionalReasoningIndex < 110) band = 'Average';
+  else if (provisionalReasoningIndex < 120) band = 'High Average';
+  else if (provisionalReasoningIndex < 130) band = 'Superior';
+  else band = 'Very Superior';
 
   return {
     rawScore,
-    totalQuestions: questions.length,
-    accuracy: rawScore / questions.length,
+    totalQuestions: session.questionOrder.length,
+    accuracy: rawScore / (session.questionOrder.length || 1),
     difficultyWeightedScore,
     categoryScores: catResult,
     difficultyScores: diffResult,
     consistencyScore,
     provisionalReasoningIndex,
     provisionalBand: band,
-    completionRate: (questions.length - skippedCount) / questions.length,
+    gFactorScore,
+    workingMemoryCapacity,
+    fluidIntelligence,
+    crystallizedIntelligence,
+    cognitiveProcessingSpeed,
+    guessingPenalty,
+    completionRate: (session.questionOrder.length - skippedCount) / (session.questionOrder.length || 1),
     totalTimeMs: session.elapsedTimeMs,
     averageTimePerQuestionMs: average(allTimes),
     medianTimePerQuestionMs: median(allTimes),

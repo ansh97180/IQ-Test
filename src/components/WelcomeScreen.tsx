@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useTest } from '../store/TestContext';
 import { validateQuestions } from '../data/questions';
+import { Clock, ShieldCheck, Settings } from 'lucide-react';
 
 export const WelcomeScreen = () => {
   const { startTest } = useTest();
   const [agreed, setAgreed] = useState(false);
+  const [duration, setDuration] = useState<number>(30); // Default to 30 minutes
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validating, setValidating] = useState(false);
 
@@ -16,7 +18,7 @@ export const WelcomeScreen = () => {
       setValidating(false);
       return;
     }
-    startTest();
+    startTest(duration);
   };
 
   return (
@@ -38,11 +40,31 @@ export const WelcomeScreen = () => {
           </div>
           
           <div>
-            <h3 className="font-semibold mb-2">Assessment Details</h3>
-            <ul className="list-disc pl-5 text-slate-600 dark:text-slate-400 space-y-1 text-sm">
-              <li><strong>Length:</strong> 120 questions</li>
-              <li><strong>Time limit:</strong> 70 minutes</li>
-              <li><strong>Format:</strong> Multiple choice, covering numerical, spatial, logical, and visual reasoning.</li>
+            <h3 className="font-semibold mb-3 flex items-center"><Settings className="w-4 h-4 mr-2"/> Assessment Configuration</h3>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Select Test Duration</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[10, 20, 30, 60].map((mins) => (
+                  <button
+                    key={mins}
+                    onClick={() => setDuration(mins)}
+                    className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center justify-center gap-1 ${
+                      duration === mins 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400' 
+                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-blue-300'
+                    }`}
+                  >
+                    <Clock className="w-5 h-5 mb-1" />
+                    <span className="font-bold">{mins} Min</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <ul className="list-disc pl-5 text-slate-600 dark:text-slate-400 space-y-2 text-sm">
+              <li><strong>Length:</strong> Algorithmically scales based on duration.</li>
+              <li><strong>Format:</strong> Multiple choice, covering algorithmic reasoning, spatial patterns, logical deduction, and mathematical structures. (No GK or English trivia).</li>
               <li><strong>Privacy:</strong> All data is stored locally in your browser. No data is sent to any server.</li>
             </ul>
           </div>

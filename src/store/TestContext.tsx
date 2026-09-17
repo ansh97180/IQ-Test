@@ -3,7 +3,6 @@ import { TestSession, AnswerRecord } from '../types';
 import { questions } from '../data/questions';
 
 const LOCAL_STORAGE_KEY = 'patterniq_session_v1';
-const TOTAL_DURATION_MS = 70 * 60 * 1000; // 70 minutes
 
 // Helper to shuffle array
 const shuffle = (array: any[]) => {
@@ -15,7 +14,7 @@ const shuffle = (array: any[]) => {
   return newArr;
 };
 
-const generateInitialSession = (): TestSession => {
+const generateInitialSession = (durationMinutes: number = 30): TestSession => {
   // Sort by difficulty to create a gradual progression, then shuffle within difficulty bands
   const byDiff = {
     1: questions.filter(q => q.difficulty === 1),
@@ -25,12 +24,28 @@ const generateInitialSession = (): TestSession => {
     5: questions.filter(q => q.difficulty === 5),
   };
   
+  // Pick a random subset from each difficulty to keep it balanced but different every time
+  const pickSubset = (arr: any[], count: number) => shuffle(arr).slice(0, count);
+
+  // Dynamic question count based on duration (roughly 1 question per minute for fluid testing, or slightly faster for easy ones)
+  let counts = { d1: 5, d2: 5, d3: 5, d4: 3, d5: 2 }; // Default 20 q (~20 mins)
+  
+  if (durationMinutes === 10) {
+    counts = { d1: 3, d2: 3, d3: 2, d4: 1, d5: 1 }; // 10 questions
+  } else if (durationMinutes === 20) {
+    counts = { d1: 5, d2: 5, d3: 5, d4: 3, d5: 2 }; // 20 questions
+  } else if (durationMinutes === 30) {
+    counts = { d1: 10, d2: 8, d3: 6, d4: 4, d5: 2 }; // 30 questions
+  } else if (durationMinutes === 60) {
+    counts = { d1: 15, d2: 15, d3: 15, d4: 10, d5: 5 }; // 60 questions
+  }
+
   const questionOrder = [
-    ...shuffle(byDiff[1]).map(q => q.id),
-    ...shuffle(byDiff[2]).map(q => q.id),
-    ...shuffle(byDiff[3]).map(q => q.id),
-    ...shuffle(byDiff[4]).map(q => q.id),
-    ...shuffle(byDiff[5]).map(q => q.id),
+    ...pickSubset(byDiff[1], counts.d1).map(q => q.id),
+    ...pickSubset(byDiff[2], counts.d2).map(q => q.id),
+    ...pickSubset(byDiff[3], counts.d3).map(q => q.id),
+    ...pickSubset(byDiff[4], counts.d4).map(q => q.id),
+    ...pickSubset(byDiff[5], counts.d5).map(q => q.id),
   ];
 
   return {
@@ -38,7 +53,7 @@ const generateInitialSession = (): TestSession => {
     status: 'not-started',
     startTime: null,
     endTime: null,
-    totalDurationMs: TOTAL_DURATION_MS,
+    totalDurationMs: durationMinutes * 60 * 1000,
     elapsedTimeMs: 0,
     questionOrder,
     currentIndex: 0,
@@ -51,7 +66,7 @@ const generateInitialSession = (): TestSession => {
 
 interface TestContextType {
   session: TestSession;
-  startTest: () => void;
+  startTest: (durationMins: number) => void;
   endTest: () => void;
   resetTest: () => void;
   goToQuestion: (index: number) => void;
@@ -87,9 +102,10 @@ export const TestProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(session));
   }, [session]);
 
-  const startTest = () => {
+  const startTest = (durationMins: number) => {
+    // Need to reset session with new duration questions if it was just created
     setSession(prev => ({
-      ...prev,
+      ...generateInitialSession(durationMins),
       status: 'in-progress',
       startTime: Date.now()
     }));

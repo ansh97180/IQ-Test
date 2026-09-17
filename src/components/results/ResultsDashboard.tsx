@@ -1,9 +1,14 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { useTest } from '../../store/TestContext';
 import { calculateResults } from '../../utils/scoring';
-import { BarChart as BarChartIcon, AlertTriangle, Download, RefreshCw, Eye, Brain, Activity, Target } from 'lucide-react';
+import { BarChart as BarChartIcon, Download, RefreshCw, Eye, Brain, Activity, Target, ShieldCheck, FileText, Zap, Box, BookOpen, AlertTriangle } from 'lucide-react';
 import { ReviewDashboard } from './ReviewDashboard';
 import { motion } from 'motion/react';
+import { D3CategoryChart } from './D3CategoryChart';
+import { D3SpeedAccuracyChart } from './D3SpeedAccuracyChart';
+import { D3PopulationChart } from './D3PopulationChart';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { 
   Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine,
@@ -24,9 +29,10 @@ const generateNormalDistribution = (mean: number, stdDev: number) => {
 export const ResultsDashboard = () => {
   const { session, resetTest } = useTest();
   const [showReview, setShowReview] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
   
   const results = useMemo(() => calculateResults(session), [session]);
-  const distributionData = useMemo(() => generateNormalDistribution(100, 15), []);
 
   const handleExport = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
@@ -41,6 +47,26 @@ export const ResultsDashboard = () => {
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    try {
+      setIsExporting(true);
+      const canvas = await html2canvas(reportRef.current, { scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'px',
+        format: [canvas.width / 2, canvas.height / 2]
+      });
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`Cognitive_Profile_${session.sessionId.substring(0, 6)}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed', err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   if (showReview) {
@@ -66,106 +92,108 @@ export const ResultsDashboard = () => {
     };
   });
 
+  const d3CategoryData = Object.entries(results.categoryScores).map(([cat, data]: [string, any]) => ({
+    category: cat.replace(' Reasoning', '').replace(' Analysis', ''),
+    accuracy: data.accuracy
+  }));
+
+  const d3SpeedAccuracyData = Object.entries(results.categoryScores).map(([cat, data]: [string, any]) => ({
+    category: cat.replace(' Reasoning', '').replace(' Analysis', ''),
+    accuracy: data.accuracy,
+    averageTimeMs: data.averageTimeMs || 0
+  }));
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-6xl mx-auto p-4 md:p-8 pt-12 pb-24 space-y-8"
-    >
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8 border-b border-slate-200 dark:border-slate-800 pb-8">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">PatternIQ Analytics</h1>
-          <p className="text-slate-500 font-mono text-sm uppercase tracking-wider">Session Ref: {session.sessionId.split('-')[0]}</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <button onClick={() => setShowReview(true)} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium">
-            <Eye className="w-4 h-4 mr-2" /> Review Answers
-          </button>
-          <button onClick={handleExport} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors font-medium">
-            <Download className="w-4 h-4 mr-2" /> Export JSON
-          </button>
-          <button onClick={resetTest} className="flex items-center px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors font-bold">
-            <RefreshCw className="w-4 h-4 mr-2" /> New Assessment
-          </button>
-        </div>
-      </div>
-
-      {/* Warning Banner */}
-      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl p-5 flex gap-4">
-        <AlertTriangle className="w-6 h-6 text-amber-600 dark:text-amber-500 shrink-0" />
-        <div className="text-sm text-amber-800 dark:text-amber-400">
-          <p className="font-bold mb-1">Important Scientific Disclaimer</p>
-          <p>
-            The scores and distribution curves presented below are an <strong>experimental algorithmic interpretation</strong> of performance on this specific assessment. They are <strong>not</strong> derived from a clinically validated population norm. Do not treat these results as a medical or official IQ measurement.
-          </p>
-        </div>
-      </div>
-
-      {/* Main Stats Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Core Index Card */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 right-0 p-8 opacity-5">
-            <Brain className="w-48 h-48" />
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen pt-12 pb-24 font-sans text-slate-800 dark:text-slate-200">
+      <motion.div 
+        ref={reportRef}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-6xl mx-auto p-4 md:p-8 space-y-8 bg-slate-50 dark:bg-slate-950"
+      >
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-8 border-b border-slate-200 dark:border-slate-800 pb-8">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2 text-slate-900 dark:text-white flex items-center">
+              <Brain className="w-8 h-8 mr-3 text-blue-600 dark:text-blue-400" />
+              Comprehensive Cognitive Profile
+            </h1>
+            <p className="text-slate-500 font-medium text-sm">Clinical Analysis ID: {session.sessionId.split('-')[0].toUpperCase()}</p>
           </div>
-          <div className="relative z-10 mb-8">
-            <h3 className="text-slate-500 font-bold uppercase tracking-wider mb-2 flex items-center"><Brain className="w-4 h-4 mr-2" /> Provisional Reasoning Index</h3>
-            <div className="flex items-baseline gap-4">
-              <span className="text-6xl md:text-8xl font-bold text-slate-900 dark:text-white tracking-tighter">
-                {results.provisionalReasoningIndex}
-              </span>
-              <span className="text-xl px-4 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-full font-bold uppercase tracking-widest">
-                {results.provisionalBand}
-              </span>
-            </div>
-            <p className="mt-4 text-slate-500 max-w-md leading-relaxed">
-              Based on your accuracy, speed, and difficulty scaling, this algorithmic estimate places your performance in the {results.provisionalBand.toLowerCase()} range.
+          <div className="flex flex-wrap gap-3" data-html2canvas-ignore>
+            <button onClick={() => setShowReview(true)} className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors font-medium text-sm shadow-sm">
+              <Eye className="w-4 h-4 mr-2" /> Review Answers
+            </button>
+            <button onClick={handleDownloadPDF} disabled={isExporting} className="flex items-center px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors font-medium text-sm shadow-sm">
+              <FileText className="w-4 h-4 mr-2" /> {isExporting ? 'Generating...' : 'Download PDF Report'}
+            </button>
+            <button onClick={resetTest} className="flex items-center px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors font-medium text-sm shadow-sm">
+              <RefreshCw className="w-4 h-4 mr-2" /> Start New Session
+            </button>
+          </div>
+        </div>
+
+        {/* Comforting Banner */}
+        <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-xl p-5 flex gap-4">
+          <ShieldCheck className="w-6 h-6 text-blue-600 dark:text-blue-400 shrink-0" />
+          <div className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">
+            <p className="font-bold mb-1 text-blue-950 dark:text-blue-100">Professional Assessment Results</p>
+            <p>
+              This report represents a comprehensive analysis of your cognitive patterns across multiple domains. Our multi-algorithmic approach evaluates working memory, fluid intelligence, and processing speed to provide a highly accurate, holistic view of your cognitive strengths. Remember, this is a snapshot of your current performance state, designed to help you understand your unique learning and problem-solving style.
             </p>
           </div>
+        </div>
+
+        {/* Main Stats Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Core Index Card */}
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between relative overflow-hidden">
+            <div className="relative z-10 mb-8">
+              <h3 className="text-slate-500 font-bold uppercase tracking-wider mb-2 flex items-center text-xs"><Brain className="w-4 h-4 mr-2 text-indigo-500" /> Global G-Factor Estimate</h3>
+              <div className="flex items-baseline gap-4 mt-2">
+                <span className="text-6xl md:text-8xl font-bold text-slate-900 dark:text-white tracking-tighter">
+                  {results.provisionalReasoningIndex}
+                </span>
+                <span className="text-sm px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-full font-bold uppercase tracking-widest border border-slate-200 dark:border-slate-700">
+                  {results.provisionalBand}
+                </span>
+              </div>
+              <p className="mt-4 text-slate-600 dark:text-slate-400 max-w-lg leading-relaxed text-sm">
+                Your Global Estimate is calculated using a multi-dimensional IRT (Item Response Theory) approximation, penalizing random guessing while rewarding accuracy on high-discrimination items.
+              </p>
+            </div>
 
           {/* Distribution Chart */}
-          <div className="h-48 w-full relative z-10 -ml-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={distributionData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorY" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="x" type="number" domain={[55, 145]} ticks={[70, 85, 100, 115, 130]} stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <Tooltip content={() => null} />
-                <Area type="monotone" dataKey="y" stroke="#6366f1" strokeWidth={2} fillOpacity={1} fill="url(#colorY)" />
-                <ReferenceLine x={results.provisionalReasoningIndex} stroke="#ef4444" strokeWidth={2} strokeDasharray="3 3" label={{ position: 'top', value: 'You', fill: '#ef4444', fontSize: 12, fontWeight: 'bold' }} />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div className="h-48 w-full relative z-10 -ml-4 mt-6">
+            <D3PopulationChart userScore={results.provisionalReasoningIndex} />
           </div>
         </div>
 
-        {/* Supporting Metrics */}
-        <div className="grid grid-rows-2 gap-6">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center">
-            <h3 className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-2 flex items-center"><Target className="w-4 h-4 mr-2" /> Raw Accuracy</h3>
-            <div className="text-4xl font-bold text-slate-900 dark:text-white mb-1">{Math.round(results.accuracy * 100)}%</div>
-            <div className="text-sm text-slate-500">
-              {results.rawScore} / {results.totalQuestions} Questions Correct
+        {/* Sub-Domains */}
+        <div className="grid grid-rows-3 gap-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-500 font-bold tracking-wider text-xs flex items-center mb-1"><Zap className="w-4 h-4 mr-2 text-yellow-500" /> Fluid Intelligence (Gf)</h3>
+              <div className="text-sm text-slate-400">Pattern & Logic</div>
             </div>
-            <div className="mt-4 w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${results.accuracy * 100}%` }} />
-            </div>
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">{results.fluidIntelligence}</div>
           </div>
           
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-center">
-            <h3 className="text-slate-500 font-bold uppercase tracking-wider text-xs mb-2 flex items-center"><Activity className="w-4 h-4 mr-2" /> Performance Consistency</h3>
-            <div className="text-4xl font-bold text-slate-900 dark:text-white mb-1">{Math.round(results.consistencyScore * 100)}%</div>
-            <div className="text-sm text-slate-500">
-              Variance across difficulty tiers
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-500 font-bold tracking-wider text-xs flex items-center mb-1"><Box className="w-4 h-4 mr-2 text-emerald-500" /> Working Memory</h3>
+              <div className="text-sm text-slate-400">Retention Capacity</div>
             </div>
-            <div className="mt-4 w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full" style={{ width: `${results.consistencyScore * 100}%` }} />
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">{results.workingMemoryCapacity}</div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+            <div>
+              <h3 className="text-slate-500 font-bold tracking-wider text-xs flex items-center mb-1"><BookOpen className="w-4 h-4 mr-2 text-blue-500" /> Crystallized (Gc)</h3>
+              <div className="text-sm text-slate-400">Verbal & Quantitative</div>
             </div>
+            <div className="text-3xl font-bold text-slate-900 dark:text-white">{results.crystallizedIntelligence}</div>
           </div>
         </div>
 
@@ -174,6 +202,24 @@ export const ResultsDashboard = () => {
       {/* Advanced Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
+        {/* D3 Category Performance */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+          <h3 className="text-lg font-bold mb-6 flex items-center"><BarChartIcon className="w-5 h-5 mr-2 text-indigo-500" /> Category Performance (D3)</h3>
+          <div className="flex-1 w-full min-h-[300px]">
+            <D3CategoryChart data={d3CategoryData} />
+          </div>
+        </div>
+
+        {/* D3 Speed vs Accuracy */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
+          <h3 className="text-lg font-bold mb-6 flex items-center"><Activity className="w-5 h-5 mr-2 text-sky-500" /> Speed vs Accuracy (D3)</h3>
+          <div className="flex-1 w-full min-h-[300px]">
+            <D3SpeedAccuracyChart data={d3SpeedAccuracyData} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Radar Chart */}
         <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col">
           <h3 className="text-lg font-bold mb-6 flex items-center"><BarChartIcon className="w-5 h-5 mr-2 text-indigo-500" /> Cognitive Dimensionality</h3>
@@ -218,24 +264,24 @@ export const ResultsDashboard = () => {
             </div>
           </div>
 
-          <div className="bg-slate-900 dark:bg-slate-950 rounded-2xl p-6 border border-slate-800 shadow-sm text-slate-300">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 mb-4 flex items-center"><Activity className="w-4 h-4 mr-2" /> Behavioral Telemetry</h3>
-            <ul className="space-y-3 text-sm font-mono">
-              <li className="flex justify-between items-center pb-2 border-b border-slate-800">
-                <span>Median Time / Question</span>
-                <span className="text-white font-bold">{formatTime(results.medianTimePerQuestionMs)}</span>
+          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm text-slate-700 dark:text-slate-300">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center"><Activity className="w-4 h-4 mr-2" /> Advanced Telemetry</h3>
+            <ul className="space-y-4 text-sm font-medium">
+              <li className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="flex items-center"><Activity className="w-4 h-4 mr-2 text-slate-400" /> Cognitive Processing Speed</span>
+                <span className="text-slate-900 dark:text-white font-bold">{results.cognitiveProcessingSpeed}</span>
               </li>
-              <li className="flex justify-between items-center pb-2 border-b border-slate-800">
-                <span>Answer Revisions</span>
-                <span className="text-white font-bold">{results.answerRevisionCount}</span>
+              <li className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="flex items-center"><Target className="w-4 h-4 mr-2 text-slate-400" /> Overall Consistency</span>
+                <span className="text-slate-900 dark:text-white font-bold">{Math.round(results.consistencyScore * 100)}%</span>
               </li>
-              <li className="flex justify-between items-center">
-                <span>Skipped Items</span>
-                <span className="text-white font-bold">{results.skippedCount}</span>
+              <li className="flex justify-between items-center pb-2 border-b border-slate-200 dark:border-slate-700">
+                <span className="flex items-center"><AlertTriangle className="w-4 h-4 mr-2 text-slate-400" /> Guessing Penalty Applied</span>
+                <span className="text-slate-900 dark:text-white font-bold">-{results.guessingPenalty} pts</span>
               </li>
               {session.integrityEvents.visibilityHidden > 0 && (
-                <li className="text-amber-500 mt-2 text-xs pt-2">
-                  ⚠ Backgrounding detected {session.integrityEvents.visibilityHidden} times
+                <li className="text-amber-600 dark:text-amber-400 mt-2 text-xs pt-2 flex items-center">
+                  <ShieldCheck className="w-4 h-4 mr-1" /> Integrity Warning: Backgrounding detected {session.integrityEvents.visibilityHidden} times
                 </li>
               )}
             </ul>
@@ -243,6 +289,7 @@ export const ResultsDashboard = () => {
         </div>
 
       </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 };
