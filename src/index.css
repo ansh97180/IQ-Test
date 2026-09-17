@@ -1,1 +1,54 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@media print {
+  @page {
+    margin: 1.5cm;
+    size: A4;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+    color: #0f172a !important; /* slate-900 */
+  }
+
+  /* Force light mode styles in print, even if the user is in dark mode */
+  .dark {
+    background-color: white !important;
+    color: #0f172a !important;
+  }
+  
+  .dark .bg-slate-900,
+  .dark .bg-slate-950 {
+    background-color: white !important;
+  }
+  
+  .dark .border-slate-800,
+  .dark .border-slate-700 {
+    border-color: #e2e8f0 !important;
+  }
+
+  .dark .text-white,
+  .dark .text-slate-200,
+  .dark .text-slate-300 {
+    color: #0f172a !important;
+  }
+
+  .dark .text-slate-400 {
+    color: #64748b !important;
+  }
+
+  /* Hide specific UI elements that shouldn't be printed */
+  .print\:hidden {
+    display: none !important;
+  }
+  
+  /* Avoid page breaks inside important cards */
+  .break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

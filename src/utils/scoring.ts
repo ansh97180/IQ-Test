@@ -125,18 +125,26 @@ export const calculateResults = (session: TestSession): AssessmentResults => {
   const normWeighted = difficultyWeightedScore / (maxPossibleSessionWeighted || 1);
   
   // Advanced Algorithms & Memory Analysis
-  // 1. Guessing Penalty: Very fast but wrong answers (< 2000ms)
+  // 1. Guessing Penalty: Very fast but wrong answers (< 3000ms)
   let guessingPenaltyCount = 0;
+  let rapidAccurateBonus = 0;
+
   session.questionOrder.forEach(qId => {
     const ans = session.answers[qId];
     if (ans && ans.selectedAnswer) {
       const q = qMap.get(qId);
-      if (q && ans.selectedAnswer !== q.correctAnswer && ans.timeSpent < 3000) {
-        guessingPenaltyCount++;
+      if (q) {
+        if (ans.selectedAnswer !== q.correctAnswer && ans.timeSpent < 3000) {
+          guessingPenaltyCount++;
+        } else if (ans.selectedAnswer === q.correctAnswer && ans.timeSpent < 10000) {
+          // Bonus for getting a complex question right very quickly
+          rapidAccurateBonus += (diffWeights[q.difficulty] * 0.5);
+        }
       }
     }
   });
-  const guessingPenalty = Math.min(10, guessingPenaltyCount * 1.5); // Max 10 penalty points
+  const guessingPenalty = Math.min(15, guessingPenaltyCount * 2); // Max 15 penalty points
+  const speedBonus = Math.min(10, rapidAccurateBonus); // Max 10 bonus points
 
   // 2. Cognitive Processing Speed (CPS):
   // Based on median time of correct answers (lower is better, mapped to 70-140)
@@ -166,9 +174,9 @@ export const calculateResults = (session: TestSession): AssessmentResults => {
   const crystallizedIntelligence = Math.round(70 + (gcAcc * 70));
 
   // 6. Multi-dimensional G-factor Score
-  // Weighted average of Gf, Gc, WMC, CPS, adjusted by consistency and penalized by guessing
+  // Weighted average of Gf, Gc, WMC, CPS, adjusted by consistency and penalized by guessing, rewarded by speed
   const gFactorRaw = (fluidIntelligence * 0.4) + (crystallizedIntelligence * 0.2) + (workingMemoryCapacity * 0.3) + (cognitiveProcessingSpeed * 0.1);
-  const gFactorScore = Math.max(70, Math.round(gFactorRaw * consistencyScore - guessingPenalty));
+  const gFactorScore = Math.max(70, Math.round(gFactorRaw * consistencyScore - guessingPenalty + speedBonus));
 
   const indexRaw = (normWeighted * 100);
   // Map indexRaw to a somewhat familiar scale, centered around 100
@@ -200,6 +208,7 @@ export const calculateResults = (session: TestSession): AssessmentResults => {
     crystallizedIntelligence,
     cognitiveProcessingSpeed,
     guessingPenalty,
+    speedBonus,
     completionRate: (session.questionOrder.length - skippedCount) / (session.questionOrder.length || 1),
     totalTimeMs: session.elapsedTimeMs,
     averageTimePerQuestionMs: average(allTimes),

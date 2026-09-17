@@ -68,6 +68,7 @@ interface TestContextType {
   session: TestSession;
   startTest: (durationMins: number) => void;
   endTest: () => void;
+  submitSession: () => void;
   resetTest: () => void;
   goToQuestion: (index: number) => void;
   answerQuestion: (questionId: string, answer: string) => void;
@@ -119,6 +120,8 @@ export const TestProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }));
   };
 
+  const submitSession = () => endTest();
+
   const resetTest = () => {
     setSession(generateInitialSession());
   };
@@ -142,20 +145,35 @@ export const TestProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setSession(prev => {
       const now = Date.now();
       const existing = prev.answers[questionId] || { questionId, selectedAnswer: null, timeSpent: 0, firstViewedAt: now, lastAnsweredAt: null, history: [] };
+      const nextAnswers = {
+        ...prev.answers,
+        [questionId]: {
+          ...existing,
+          selectedAnswer: answer,
+          lastAnsweredAt: now,
+          history: [...existing.history, { answer, timestamp: now }]
+        }
+      };
+
+      // Auto-advance logic (optional, but requested for smooth flow)
+      // Only auto-advance if it's the current question and not the last one
+      let nextIndex = prev.currentIndex;
+      if (prev.questionOrder[prev.currentIndex] === questionId && prev.currentIndex < prev.questionOrder.length - 1) {
+        nextIndex = prev.currentIndex + 1;
+        const nextQId = prev.questionOrder[nextIndex];
+        if (!nextAnswers[nextQId]) {
+           nextAnswers[nextQId] = { questionId: nextQId, selectedAnswer: null, timeSpent: 0, firstViewedAt: now, lastAnsweredAt: null, history: [] };
+        }
+      }
+
       return {
         ...prev,
-        answers: {
-          ...prev.answers,
-          [questionId]: {
-            ...existing,
-            selectedAnswer: answer,
-            lastAnsweredAt: now,
-            history: [...existing.history, { answer, timestamp: now }]
-          }
-        }
+        currentIndex: nextIndex,
+        answers: nextAnswers
       };
     });
   };
+
 
   const toggleFlag = (questionId: string) => {
     setSession(prev => ({
@@ -196,7 +214,7 @@ export const TestProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <TestContext.Provider value={{
-      session, startTest, endTest, resetTest, goToQuestion, answerQuestion, toggleFlag, updateTime, recordIntegrityEvent, updateSettings, getTimeRemaining
+      session, startTest, endTest, submitSession, resetTest, goToQuestion, answerQuestion, toggleFlag, updateTime, recordIntegrityEvent, updateSettings, getTimeRemaining
     }}>
       {children}
     </TestContext.Provider>

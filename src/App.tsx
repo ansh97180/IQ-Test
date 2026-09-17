@@ -1,5 +1,6 @@
 import React from 'react';
 import { TestProvider, useTest } from './store/TestContext';
+import { ThemeProvider } from './store/ThemeContext';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { TestRunner } from './components/test/TestRunner';
 import { ResultsDashboard } from './components/results/ResultsDashboard';
@@ -25,10 +26,13 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <TestProvider>
-      <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans transition-colors duration-200">
-        <AppContent />
-      </div>
-    </TestProvider>
+    <ThemeProvider>
+      <TestProvider>
+        <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans transition-colors duration-200">
+          <AppContent />
+        </div>
+      </TestProvider>
+    </ThemeProvider>
   );
 }
+

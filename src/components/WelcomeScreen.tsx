@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTest } from '../store/TestContext';
 import { validateQuestions } from '../data/questions';
 import { Clock, ShieldCheck, Settings } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 export const WelcomeScreen = () => {
   const { startTest } = useTest();
@@ -22,11 +23,14 @@ export const WelcomeScreen = () => {
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-6 pt-20">
+    <div className="max-w-3xl mx-auto p-6 pt-20 relative">
+      <div className="absolute top-6 right-6">
+        <ThemeToggle />
+      </div>
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-8 md:p-12">
         <h1 className="text-4xl font-bold tracking-tight mb-4 text-slate-900 dark:text-white">PatternIQ</h1>
         <p className="text-lg text-slate-600 dark:text-slate-400 mb-8 leading-relaxed">
-          Welcome to the PatternIQ Cognitive Assessment. This is a 120-item, browser-based evaluation designed to measure observable reasoning performance across multiple cognitive domains.
+          Welcome to the PatternIQ Cognitive Assessment. This is a comprehensive, browser-based evaluation designed to measure observable reasoning performance across multiple cognitive domains.
         </p>
 
         <div className="space-y-6 mb-10">
@@ -63,7 +67,7 @@ export const WelcomeScreen = () => {
             </div>
 
             <ul className="list-disc pl-5 text-slate-600 dark:text-slate-400 space-y-2 text-sm">
-              <li><strong>Length:</strong> Algorithmically scales based on duration.</li>
+              <li><strong>Length:</strong> Algorithmically scales based on duration ({duration === 10 ? 10 : duration === 20 ? 20 : duration === 30 ? 30 : 60} questions).</li>
               <li><strong>Format:</strong> Multiple choice, covering algorithmic reasoning, spatial patterns, logical deduction, and mathematical structures. (No GK or English trivia).</li>
               <li><strong>Privacy:</strong> All data is stored locally in your browser. No data is sent to any server.</li>
             </ul>

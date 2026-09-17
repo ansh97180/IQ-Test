@@ -80,6 +80,7 @@ export interface AssessmentResults {
   crystallizedIntelligence: number;
   cognitiveProcessingSpeed: number;
   guessingPenalty: number;
+  speedBonus?: number;
   completionRate: number; // 0-1
   totalTimeMs: number;
   averageTimePerQuestionMs: number;

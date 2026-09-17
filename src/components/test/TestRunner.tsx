@@ -4,9 +4,10 @@ import { questions } from '../../data/questions';
 import { VisualArea } from './VisualArea';
 import { Flag, Clock, ChevronLeft, ChevronRight, Check, Settings, X, Hourglass } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ThemeToggle } from '../ThemeToggle';
 
 export const TestRunner = () => {
-  const { session, answerQuestion, goToQuestion, toggleFlag, updateTime, endTest, recordIntegrityEvent, getTimeRemaining, updateSettings } = useTest();
+  const { session, answerQuestion, goToQuestion, toggleFlag, updateTime, submitSession, recordIntegrityEvent, getTimeRemaining, updateSettings } = useTest();
   
   const [showSettings, setShowSettings] = useState(false);
   const qId = session.questionOrder[session.currentIndex];
@@ -30,11 +31,11 @@ export const TestRunner = () => {
       
       if (remaining <= 0) {
         clearInterval(timerRef.current);
-        endTest();
+        submitSession();
       }
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [updateTime, getTimeRemaining, endTest]);
+  }, [updateTime, getTimeRemaining, submitSession]);
 
   useEffect(() => {
     const handleVisibility = () => { if (document.hidden) recordIntegrityEvent('visibilityHidden'); };
@@ -93,11 +94,12 @@ export const TestRunner = () => {
             <Clock className={`w-5 h-5 ${isCriticalTime ? 'animate-pulse' : ''}`} />
             <span>{formatTime(timeLeft)}</span>
           </motion.div>
+          <ThemeToggle />
           <button onClick={() => setShowSettings(!showSettings)} className="p-2 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" title="Settings">
             <Settings className="w-5 h-5" />
           </button>
           <button 
-            onClick={() => { if(window.confirm('Are you sure you want to submit early?')) endTest() }}
+            onClick={() => { submitSession() }}
             className="hidden sm:block text-sm font-bold px-4 py-2 rounded-lg bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90 transition-opacity"
           >
             Submit Test
@@ -182,36 +184,40 @@ export const TestRunner = () => {
         <AnimatePresence mode="wait">
           <motion.div 
             key={qId}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className={`rounded-2xl shadow-sm border p-6 md:p-10 flex-1 flex flex-col ${session.settings.readingMode ? 'bg-white border-[#eaddc5]' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -30 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className={`rounded-2xl shadow-sm border p-6 md:p-10 flex-1 flex flex-col ${session.settings.readingMode ? 'bg-white border-[#eaddc5]' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'} grid ${question.visualData ? 'grid-cols-1 lg:grid-cols-2 gap-8' : 'grid-cols-1 gap-8'}`}
           >
-            <div className="flex justify-between items-start mb-8">
-              <h2 className="text-[1.25em] font-medium text-slate-900 dark:text-slate-100 whitespace-pre-wrap leading-relaxed">
-                {question.prompt}
-              </h2>
-              <button 
-                onClick={() => toggleFlag(qId)}
-                className={`p-2 rounded-lg transition-colors ml-4 shrink-0 ${
-                  session.flags[qId] 
-                    ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' 
-                    : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-                title="Flag for review"
-              >
-                <Flag className={`w-6 h-6 ${session.flags[qId] ? 'fill-current' : ''}`} />
-              </button>
+            {/* Prompt & Visual Area */}
+            <div className="flex flex-col space-y-6">
+              <div className="flex justify-between items-start">
+                <h2 className="text-[1.25em] font-medium text-slate-900 dark:text-slate-100 whitespace-pre-wrap leading-relaxed">
+                  {question.prompt}
+                </h2>
+                <button 
+                  onClick={() => toggleFlag(qId)}
+                  className={`p-2 rounded-lg transition-colors ml-4 shrink-0 ${
+                    session.flags[qId] 
+                      ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' 
+                      : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                  title="Flag for review"
+                >
+                  <Flag className={`w-6 h-6 ${session.flags[qId] ? 'fill-current' : ''}`} />
+                </button>
+              </div>
+
+              {question.visualData && (
+                <div className="w-full flex-1 min-h-[250px] flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800 p-4">
+                  <VisualArea data={question.visualData} />
+                </div>
+              )}
             </div>
 
-            {question.visualData && (
-              <div className="mb-10">
-                <VisualArea data={question.visualData} />
-              </div>
-            )}
-
-            <div className="grid gap-4 mt-auto">
+            {/* Choices Area */}
+            <div className="grid grid-cols-1 gap-4 content-start">
               {question.choices.map((choice, i) => {
                 const isSelected = answerRecord.selectedAnswer === choice;
                 return (
@@ -250,14 +256,23 @@ export const TestRunner = () => {
             Previous
           </button>
           
-          <button
-            onClick={() => goToQuestion(session.currentIndex + 1)}
-            disabled={session.currentIndex === session.questionOrder.length - 1}
-            className="flex-1 md:flex-none flex justify-center items-center px-6 py-4 rounded-xl font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200"
-          >
-            Next
-            <ChevronRight className="w-6 h-6 ml-1" />
-          </button>
+          {session.currentIndex === session.questionOrder.length - 1 ? (
+            <button
+              onClick={() => submitSession()}
+              className="flex-1 md:flex-none flex justify-center items-center px-6 py-4 rounded-xl font-bold transition-all bg-indigo-600 text-white hover:bg-indigo-700 shadow-lg shadow-indigo-500/30"
+            >
+              Finish Test
+              <Check className="w-6 h-6 ml-1" />
+            </button>
+          ) : (
+            <button
+              onClick={() => goToQuestion(session.currentIndex + 1)}
+              className="flex-1 md:flex-none flex justify-center items-center px-6 py-4 rounded-xl font-bold transition-all bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200"
+            >
+              Next
+              <ChevronRight className="w-6 h-6 ml-1" />
+            </button>
+          )}
         </div>
       </main>
     </div>
