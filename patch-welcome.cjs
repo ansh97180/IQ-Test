@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useState } from 'react';
 import { useTest } from '../store/TestContext';
 import { validateQuestions } from '../data/questions';
 import { Clock, ShieldCheck, Settings, Globe, ArrowRight, Play } from 'lucide-react';
@@ -38,11 +40,11 @@ export const WelcomeScreen = () => {
           <button
             key={l}
             onClick={() => setLang(l)}
-            className={`p-4 rounded-xl border-2 transition-all font-medium ${
+            className={\`p-4 rounded-xl border-2 transition-all font-medium \${
               lang === l 
                 ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' 
                 : 'border-slate-200 text-slate-700 hover:border-blue-300 dark:border-slate-700 dark:text-slate-300'
-            }`}
+            }\`}
           >
             {l === 'en' ? 'English' : l === 'hi' ? 'हिंदी (Hindi)' : l === 'zh' ? '中文 (Chinese)' : 'Hinglish'}
           </button>
@@ -133,3 +135,6 @@ export const WelcomeScreen = () => {
     </div>
   );
 };
+`;
+
+fs.writeFileSync('src/components/WelcomeScreen.tsx', code);

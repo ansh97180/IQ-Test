@@ -1,7 +1,9 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+const fs = require('fs');
+
+const code = `import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { useTest } from '../../store/TestContext';
 import { calculateResults } from '../../utils/scoring';
-import { Download, RefreshCw, Eye, Brain, Activity, Target, ShieldCheck, FileText, Zap, Box, BookOpen, AlertTriangle, BarChart as BarChartIcon, ChevronDown, ChevronUp, Home, Lightbulb, Cpu, Gauge, Shapes, Volume2, HardDrive, Calculator, PenTool } from 'lucide-react';
+import { Download, RefreshCw, Eye, Brain, Activity, Target, ShieldCheck, FileText, Zap, Box, BookOpen, AlertTriangle, BarChart as BarChartIcon, ChevronDown, ChevronUp } from 'lucide-react';
 import { ReviewDashboard } from './ReviewDashboard';
 import { motion, AnimatePresence } from 'motion/react';
 import { D3PopulationChart } from './D3PopulationChart';
@@ -19,9 +21,6 @@ const DomainExplanation = ({ domain, score, expanded, onToggle }: { domain: any,
         className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
       >
         <div className="flex items-center space-x-4">
-          <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
-            {domain.icon}
-          </div>
           <div className="text-lg font-bold text-slate-800 dark:text-slate-200">{domain.name}</div>
         </div>
         <div className="flex items-center space-x-6">
@@ -52,11 +51,11 @@ const DomainExplanation = ({ domain, score, expanded, onToggle }: { domain: any,
                 <p>{getPerformanceInsight(domain.name, score)}</p>
                 <p className="mt-2 text-indigo-600 dark:text-indigo-400 font-medium">
                   {score !== null && score >= 115 
-                    ? `Your ${domain.name.split(' (')[0].toLowerCase()} performance was particularly strong relative to your other measured domains.`
+                    ? \`Your \${domain.name.split(' (')[0].toLowerCase()} performance was particularly strong relative to your other measured domains.\`
                     : score !== null && score <= 85
-                    ? `Your performance on ${domain.name.split(' (')[0].toLowerCase()} items was lower than your performance in some other areas.`
+                    ? \`Your performance on \${domain.name.split(' (')[0].toLowerCase()} items was lower than your performance in some other areas.\`
                     : score !== null 
-                    ? `Your performance on ${domain.name.split(' (')[0].toLowerCase()} items was generally balanced with your overall cognitive profile.`
+                    ? \`Your performance on \${domain.name.split(' (')[0].toLowerCase()} items was generally balanced with your overall cognitive profile.\`
                     : ''}
                 </p>
               </div>
@@ -133,7 +132,7 @@ export const ResultsDashboard = () => {
         pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, imgHeight);
       }
       
-      pdf.save(`PatternIQ_Comprehensive_Report_${session.sessionId.substring(0,6)}.pdf`);
+      pdf.save(\`PatternIQ_Comprehensive_Report_\${session.sessionId.substring(0,6)}.pdf\`);
     } catch (err) {
       console.error("PDF generation failed:", err);
       window.print(); 
@@ -150,7 +149,7 @@ export const ResultsDashboard = () => {
   const formatTime = (ms: number) => {
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
-    return `${minutes}m ${seconds}s`;
+    return \`\${minutes}m \${seconds}s\`;
   };
 
   if (showReview) {
@@ -159,8 +158,7 @@ export const ResultsDashboard = () => {
 
   const domainData = [
     { 
-      name: "Fluid Reasoning (GF)",
-      icon: <Lightbulb className="w-5 h-5" />, 
+      name: "Fluid Reasoning (GF)", 
       score: results.fluidIntelligence,
       measures: "The ability to solve novel problems, identify patterns, and extrapolate logical rules without relying heavily on prior knowledge.",
       tasks: "Number sequences, visual pattern matrices, and abstract logic puzzles.",
@@ -168,8 +166,7 @@ export const ResultsDashboard = () => {
       limitations: "Scores can be heavily influenced by test anxiety, unfamiliarity with the digital testing format, and fatigue."
     },
     { 
-      name: "Crystallized Knowledge (GC)",
-      icon: <BookOpen className="w-5 h-5" />, 
+      name: "Crystallized Knowledge (GC)", 
       score: results.crystallizedIntelligence,
       measures: "The depth and breadth of acquired knowledge, vocabulary, and learned methodologies.",
       tasks: "Mathematical formulas, applied logic deductions, and structured algorithmic problems.",
@@ -177,8 +174,7 @@ export const ResultsDashboard = () => {
       limitations: "Heavily dependent on cultural context, language proficiency, and educational background."
     },
     { 
-      name: "Working Memory (GWM)",
-      icon: <Cpu className="w-5 h-5" />, 
+      name: "Working Memory (GWM)", 
       score: results.workingMemoryCapacity,
       measures: "The capacity to temporarily hold, manipulate, and process multiple pieces of information simultaneously.",
       tasks: "Multi-step mental arithmetic, complex sequence reversals, and multi-variable spatial tracking.",
@@ -186,8 +182,7 @@ export const ResultsDashboard = () => {
       limitations: "Highly sensitive to distractions, lack of sleep, and cognitive load limits."
     },
     { 
-      name: "Processing Speed (Gs)",
-      icon: <Gauge className="w-5 h-5" />, 
+      name: "Processing Speed (Gs)", 
       score: results.cognitiveProcessingSpeed,
       measures: "The speed and efficiency of executing simple or repetitive cognitive tasks fluently and automatically.",
       tasks: "Timed discrimination tasks, rapid symbol matching, and visual scanning.",
@@ -195,8 +190,7 @@ export const ResultsDashboard = () => {
       limitations: "May penalize individuals who naturally adopt a slower, more meticulous verification strategy."
     },
     { 
-      name: "Visual-Spatial Processing (Gv)",
-      icon: <Shapes className="w-5 h-5" />, 
+      name: "Visual-Spatial Processing (Gv)", 
       score: results.categoryScores['Spatial Reasoning']?.accuracy ? Math.round(70 + results.categoryScores['Spatial Reasoning'].accuracy * 70) : null,
       measures: "The ability to perceive, analyze, synthesize, and mentally manipulate visual patterns.",
       tasks: "Mental rotation of 3D objects, spatial folding, and visual sequence extrapolation.",
@@ -204,8 +198,7 @@ export const ResultsDashboard = () => {
       limitations: "Screen glare, display size, and visual fatigue can artificially lower performance."
     },
     { 
-      name: "Auditory Processing (Ga)",
-      icon: <Volume2 className="w-5 h-5" />, 
+      name: "Auditory Processing (Ga)", 
       score: null,
       measures: "The ability to analyze, synthesize, and discriminate auditory stimuli.",
       tasks: "Phonetic discrimination, tonal memory, and rhythm tracking.",
@@ -213,8 +206,7 @@ export const ResultsDashboard = () => {
       limitations: "Not evaluated in this visual-only assessment version."
     },
     { 
-      name: "Long-Term Retrieval (Glr)",
-      icon: <HardDrive className="w-5 h-5" />, 
+      name: "Long-Term Retrieval (Glr)", 
       score: null,
       measures: "The ability to store information fluently and retrieve it later over extended periods.",
       tasks: "Paired-associate learning, delayed recall, and semantic fluency.",
@@ -222,8 +214,7 @@ export const ResultsDashboard = () => {
       limitations: "Not evaluated in this short-duration assessment version."
     },
     { 
-      name: "Quantitative Knowledge (Gq)",
-      icon: <Calculator className="w-5 h-5" />, 
+      name: "Quantitative Knowledge (Gq)", 
       score: results.categoryScores['Mathematical Logic']?.accuracy ? Math.round(70 + results.categoryScores['Mathematical Logic'].accuracy * 70) : null,
       measures: "The breadth of mathematical knowledge and the ability to apply it.",
       tasks: "Algebraic problem solving, probability calculations, and numerical logic.",
@@ -231,8 +222,7 @@ export const ResultsDashboard = () => {
       limitations: "Requires formal mathematical education to score highly."
     },
     { 
-      name: "Reading & Writing (Grw)",
-      icon: <PenTool className="w-5 h-5" />, 
+      name: "Reading & Writing (Grw)", 
       score: null,
       measures: "The acquisition and application of basic reading and writing skills.",
       tasks: "Reading comprehension, spelling, and grammar usage.",
@@ -275,9 +265,6 @@ export const ResultsDashboard = () => {
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <ThemeToggle />
-            <button onClick={resetTest} className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-medium text-sm shadow-sm">
-              <Home className="w-4 h-4 mr-2" /> Go Home
-            </button>
             <button onClick={() => setViewMode('report')} disabled={isExporting} className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors font-medium text-sm shadow-sm disabled:opacity-50">
               <FileText className="w-4 h-4 mr-2" /> View Report
             </button>
@@ -329,20 +316,14 @@ export const ResultsDashboard = () => {
         <div className="mb-16">
           <h2 className="text-2xl font-bold mb-6 text-slate-900 dark:text-white uppercase tracking-wider text-sm border-b border-slate-200 dark:border-slate-800 pb-2">Cognitive Profile</h2>
           <div className="space-y-4">
-            {domainData.map((domain, index) => (
-              <motion.div
-                key={domain.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1, ease: "easeOut" }}
-              >
-                <DomainExplanation 
-                  domain={domain} 
-                  score={domain.score}
-                  expanded={expandedDomain === domain.name}
-                  onToggle={() => setExpandedDomain(expandedDomain === domain.name ? null : domain.name)}
-                />
-              </motion.div>
+            {domainData.map((domain) => (
+              <DomainExplanation 
+                key={domain.name} 
+                domain={domain} 
+                score={domain.score}
+                expanded={expandedDomain === domain.name}
+                onToggle={() => setExpandedDomain(expandedDomain === domain.name ? null : domain.name)}
+              />
             ))}
           </div>
         </div>
@@ -356,7 +337,7 @@ export const ResultsDashboard = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
               <div className="col-span-1">
                 <div className="mb-6">
-                  <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Assessment Score</p>
+                  <p className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-1">Your Assessment Score</p>
                   <p className="text-4xl font-black text-slate-900 dark:text-white">{results.provisionalReasoningIndex}</p>
                 </div>
                 <div>
@@ -388,7 +369,7 @@ export const ResultsDashboard = () => {
                     {/* User Score Marker */}
                     <div 
                       className="absolute top-0 bottom-0 w-3 bg-indigo-600 dark:bg-indigo-400 rounded-full shadow-lg transform -translate-x-1/2 transition-all duration-1000"
-                      style={{ left: `${Math.max(5, Math.min(95, ((results.provisionalReasoningIndex - 55) / (145 - 55)) * 100))}%` }}
+                      style={{ left: \`\${Math.max(5, Math.min(95, ((results.provisionalReasoningIndex - 55) / (145 - 55)) * 100))}%\` }}
                     ></div>
                   </div>
                   
@@ -406,9 +387,6 @@ export const ResultsDashboard = () => {
 
             <div className="text-sm text-slate-600 dark:text-slate-400 space-y-4 border-t border-slate-200 dark:border-slate-700 pt-6">
               <p>
-                <strong>Percentiles:</strong> Percentile unavailable for this assessment (requires valid reference distribution).
-              </p>
-              <p>
                 <strong>Limitations:</strong> This benchmark comparison uses an anonymized reference distribution. It is intended for context and personal insight only. 
               </p>
               <p>
@@ -418,14 +396,11 @@ export const ResultsDashboard = () => {
           </div>
         </div>
 
-        <div className="mt-12 flex justify-center pb-12">
-          <button onClick={resetTest} className="px-8 py-4 bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 rounded-xl font-bold text-lg shadow-lg hover:bg-slate-800 dark:hover:bg-white transition-all flex items-center">
-            <Home className="w-5 h-5 mr-3" /> Return to Home / Retake Test
-          </button>
-        </div>
-
         <PDFReportTemplate ref={pdfTemplateRef} results={results} session={session} />
       </div>
     </div>
   );
 };
+`;
+
+fs.writeFileSync('src/components/results/ResultsDashboard.tsx', code);

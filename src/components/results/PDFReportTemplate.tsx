@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { AssessmentResults, TestSession } from '../../types';
+import { getPerformanceInsight } from '../../utils/performanceInsights';
 
 interface PDFReportTemplateProps {
   isViewMode?: boolean;
@@ -7,21 +8,7 @@ interface PDFReportTemplateProps {
   session: TestSession;
 }
 
-const getPerformanceDescription = (domain: string, score: number | null) => {
-  if (score === null || isNaN(score) || score === 0) return "Not evaluated in this assessment version.";
-  
-  if (score >= 130) {
-    return `Your performance in ${domain} is well above average, indicating a highly developed ability to process and manipulate this type of information efficiently.`;
-  } else if (score >= 115) {
-    return `Your performance in ${domain} is above average. You demonstrated strong capabilities in these cognitive tasks relative to the reference group.`;
-  } else if (score >= 85) {
-    return `Your performance in ${domain} is within the average range. This suggests typical capabilities in handling these specific cognitive operations.`;
-  } else if (score >= 70) {
-    return `Your performance in ${domain} was slightly below the average range. Practice in this specific cognitive area may improve future efficiency.`;
-  } else {
-    return `Your performance in ${domain} was below average relative to the reference group.`;
-  }
-};
+
 
 export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTemplateProps>(({ results, session, isViewMode = false }, ref) => {
   const domains = [
@@ -121,7 +108,7 @@ export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTempl
                   </div>
                 </div>
                 <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
-                  {getPerformanceDescription(domain.name.split(' (')[0], domain.score)}
+                  {getPerformanceInsight(domain.name, domain.score)}
                 </p>
               </div>
             ))}
@@ -141,7 +128,7 @@ export const PDFReportTemplate = React.forwardRef<HTMLDivElement, PDFReportTempl
                 </div>
               </div>
               <p style={{ fontSize: '14px', color: '#475569', margin: 0, lineHeight: 1.5 }}>
-                {getPerformanceDescription(domain.name.split(' (')[0], domain.score)}
+                {getPerformanceInsight(domain.name, domain.score)}
               </p>
             </div>
           ))}

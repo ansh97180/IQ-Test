@@ -60,6 +60,10 @@ export const TestRunner = () => {
 
   const isLowTime = timeLeft < 5 * 60 * 1000;
   const isCriticalTime = timeLeft < 1 * 60 * 1000;
+  const allDomains = Array.from(new Set(session.questionOrder.map(id => questions.find(q => q.id === id)?.category))).filter(Boolean);
+  const currentDomainIndex = allDomains.indexOf(question.category) + 1;
+  const totalDomains = allDomains.length;
+
   const qEstimatedMs = (question.estimatedTime || 60) * 1000;
   const qTimeRatio = Math.min(1, qTimeSpent / qEstimatedMs);
   const qTimeWarning = qTimeRatio > 0.8;
@@ -77,9 +81,7 @@ export const TestRunner = () => {
       <header className={`bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 px-4 md:px-8 h-16 flex items-center justify-between shadow-sm ${session.settings.readingMode ? 'bg-[#fdf6e3] border-[#eaddc5] dark:bg-slate-900' : ''}`}>
         <div className="flex items-center space-x-4">
           <div className="font-bold text-xl bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 tracking-tight">PatternIQ</div>
-          <div className="hidden md:flex items-center px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-semibold text-slate-600 dark:text-slate-300">
-            {question.category}
-          </div>
+          
         </div>
         
         <div className="flex items-center space-x-4 md:space-x-6">
@@ -107,14 +109,34 @@ export const TestRunner = () => {
         </div>
       </header>
 
-      {/* Progress Bar */}
-      <div className="h-1.5 bg-slate-200 dark:bg-slate-800 w-full overflow-hidden">
-        <motion.div 
-          className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${((session.currentIndex + 1) / session.questionOrder.length) * 100}%` }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-        />
+      {/* Enhanced Progress & Domain Bar */}
+      <div className="bg-white/80 backdrop-blur-md dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center py-3 px-4 md:px-8 shadow-sm relative z-0">
+        <div className="w-full flex items-center justify-between mb-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          <div className="flex items-center">
+            <span className="text-indigo-600 dark:text-indigo-400 mr-2">Domain {currentDomainIndex} of {totalDomains}:</span>
+            <span className="text-slate-800 dark:text-slate-200">{question.category}</span>
+          </div>
+          <div>
+            Question {session.currentIndex + 1} of {session.questionOrder.length}
+          </div>
+        </div>
+        
+        <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden relative shadow-inner">
+          <motion.div 
+            className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-500"
+            initial={{ width: 0 }}
+            animate={{ width: `${((session.currentIndex + 1) / session.questionOrder.length) * 100}%` }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          />
+          {allDomains.map((domain) => {
+            const firstQIndex = session.questionOrder.findIndex(id => questions.find(q => q.id === id)?.category === domain);
+            const percentage = (firstQIndex / session.questionOrder.length) * 100;
+            if (percentage === 0) return null;
+            return (
+              <div key={domain} className="absolute top-0 bottom-0 w-0.5 bg-white/50 dark:bg-slate-900/50 z-10" style={{ left: `${percentage}%` }} />
+            );
+          })}
+        </div>
       </div>
 
       {/* Main Content */}
