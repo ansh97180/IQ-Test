@@ -52,3 +52,60 @@
     page-break-inside: avoid;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0; /* Let the PDF template handle internal padding */
+  }
+
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background-color: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Hide everything not meant for printing */
+  .no-print,
+  nav,
+  header:not(.print-header),
+  footer:not(.print-footer),
+  button {
+    display: none !important;
+  }
+
+  /* Remove dark mode backgrounds for print */
+  .dark {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  /* Ensure the report container fits cleanly */
+  .print-report-container {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: static !important;
+  }
+
+  .pdf-page {
+    page-break-after: always;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    /* In print, A4 height is automatic based on @page size */
+    height: 100vh !important; 
+    padding: 40px !important;
+  }
+
+  /* Don't page break after the last page */
+  .pdf-page:last-child {
+    page-break-after: auto;
+  }
+}

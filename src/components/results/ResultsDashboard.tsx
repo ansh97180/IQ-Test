@@ -9,6 +9,7 @@ import { D3SpeedAccuracyChart } from './D3SpeedAccuracyChart';
 import { D3PopulationChart } from './D3PopulationChart';
 import { D3BenchmarkChart } from './D3BenchmarkChart';
 import { ThemeToggle } from '../ThemeToggle';
+import { PDFReportTemplate } from './PDFReportTemplate';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
 
@@ -17,12 +18,14 @@ export const ResultsDashboard = () => {
   const [showReview, setShowReview] = useState(false);
   const [printMode, setPrintMode] = useState<'report' | 'certificate' | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [viewMode, setViewMode] = useState<'dashboard' | 'report'>('dashboard');
   
   const reportRef = useRef<HTMLDivElement>(null);
   const page1Ref = useRef<HTMLDivElement>(null);
   const page2Ref = useRef<HTMLDivElement>(null);
   const page3Ref = useRef<HTMLDivElement>(null);
   const page4Ref = useRef<HTMLDivElement>(null);
+  const pdfTemplateRef = useRef<HTMLDivElement>(null);
   
   const results = useMemo(() => calculateResults(session), [session]);
 
@@ -39,42 +42,41 @@ export const ResultsDashboard = () => {
   }, [printMode]);
 
   const generateReportPDF = async () => {
-    if (!page1Ref.current || !page2Ref.current || !page3Ref.current || !page4Ref.current) return;
+    if (!pdfTemplateRef.current) return;
     setIsExporting(true);
     
     try {
+      // Small timeout to allow React to render the hidden template completely
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       
-      const pages = [page1Ref, page2Ref, page3Ref, page4Ref];
+      // Select all pages within the template
+      const pages = pdfTemplateRef.current.querySelectorAll('.pdf-page');
       
       for (let i = 0; i < pages.length; i++) {
-        const ref = pages[i];
-        if (ref.current) {
-          // html-to-image is highly robust and avoids oklch CSS errors 
-          // by drawing the actual computed DOM via SVG foreignObjects.
-          const dataUrl = await toPng(ref.current, { 
-            backgroundColor: '#f8fafc', // Force slate-50 to ensure text stays readable
-            pixelRatio: 2,
-            style: { transform: 'scale(1)', transformOrigin: 'top left' }
-          });
-          
-          const imgProps = pdf.getImageProperties(dataUrl);
-          const ratio = imgProps.width / imgProps.height;
-          let imgHeight = pdfWidth / ratio;
-          
-          if (i > 0) pdf.addPage();
-          
-          // Add some padding to the top (10mm)
-          pdf.addImage(dataUrl, 'PNG', 0, 10, pdfWidth, imgHeight);
-        }
+        const pageEl = pages[i] as HTMLElement;
+        const dataUrl = await toPng(pageEl, { 
+          backgroundColor: '#ffffff',
+          pixelRatio: 2,
+          style: { transform: 'scale(1)', transformOrigin: 'top left' },
+          cacheBust: true,
+        });
+        
+        const imgProps = pdf.getImageProperties(dataUrl);
+        const ratio = imgProps.width / imgProps.height;
+        const imgHeight = pdfWidth / ratio;
+        
+        if (i > 0) pdf.addPage();
+        
+        pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, imgHeight);
       }
       
       pdf.save(`PatternIQ_Comprehensive_Report_${session.sessionId.substring(0,6)}.pdf`);
     } catch (err) {
       console.error("PDF generation failed:", err);
-      // Fallback to window.print if completely blocked
       window.print(); 
     } finally {
       setIsExporting(false);
@@ -228,6 +230,28 @@ export const ResultsDashboard = () => {
     );
   }
 
+  if (viewMode === 'report') {
+    return (
+      <div className="bg-slate-200 dark:bg-slate-900 min-h-screen py-12">
+        <div className="max-w-5xl mx-auto px-4 mb-8 flex justify-between items-center no-print">
+          <button 
+            onClick={() => setViewMode('dashboard')}
+            className="flex items-center px-4 py-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-lg shadow-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            ← Back to Dashboard
+          </button>
+          <button 
+            onClick={handleDownloadPDF}
+            className="flex items-center px-6 py-2 bg-indigo-600 text-white rounded-lg shadow-sm font-medium hover:bg-indigo-700 transition-colors"
+          >
+            <Download className="w-4 h-4 mr-2" /> Print / Save PDF
+          </button>
+        </div>
+        <PDFReportTemplate results={results} session={session} isViewMode={true} />
+      </div>
+    );
+  }
+
   return (
     <div className={`bg-slate-50 dark:bg-slate-950 min-h-screen pt-12 pb-24 font-sans text-slate-800 dark:text-slate-200 ${printMode === 'report' ? 'print:bg-white print:text-slate-900' : ''}`}>
       <motion.div 
@@ -254,8 +278,11 @@ export const ResultsDashboard = () => {
               <button onClick={() => setPrintMode('certificate')} disabled={isExporting} className="flex items-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors font-medium text-sm shadow-sm disabled:opacity-50">
                 <BookOpen className="w-4 h-4 mr-2" /> {isExporting && printMode === 'certificate' ? 'Generating...' : 'Download Certificate'}
               </button>
+              <button onClick={() => setViewMode('report')} disabled={isExporting} className="flex items-center px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-800/50 transition-colors font-medium text-sm shadow-sm disabled:opacity-50">
+                <FileText className="w-4 h-4 mr-2" /> View Report
+              </button>
               <button onClick={() => setPrintMode('report')} disabled={isExporting} className="flex items-center px-4 py-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-800/50 transition-colors font-medium text-sm shadow-sm disabled:opacity-50">
-                <FileText className="w-4 h-4 mr-2" /> {isExporting && printMode === 'report' ? 'Generating...' : 'Download Report'}
+                <Download className="w-4 h-4 mr-2" /> {isExporting && printMode === 'report' ? 'Generating...' : 'Download PDF'}
               </button>
               <button onClick={resetTest} className="flex items-center px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg hover:bg-slate-800 dark:hover:bg-slate-200 transition-colors font-medium text-sm shadow-sm">
                 <RefreshCw className="w-4 h-4 mr-2" /> Start New Session
@@ -383,6 +410,7 @@ export const ResultsDashboard = () => {
           </div>
         </div>
 
+        <PDFReportTemplate ref={pdfTemplateRef} results={results} session={session} />
         <div ref={page4Ref} className="pt-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 md:p-8 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col break-inside-avoid">
             <h2 className="text-xl font-bold mb-2 flex items-center"><Target className="w-6 h-6 mr-3 text-indigo-500" /> Reference Benchmark Comparison</h2>
