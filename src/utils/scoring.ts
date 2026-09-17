@@ -147,30 +147,50 @@ export const calculateResults = (session: TestSession): AssessmentResults => {
   const speedBonus = Math.min(10, rapidAccurateBonus); // Max 10 bonus points
 
   // 2. Cognitive Processing Speed (CPS):
-  // Based on median time of correct answers (lower is better, mapped to 70-140)
-  const medianCorrectTime = median(correctTimes);
-  // Assume ~15000ms is 100, 5000ms is 130
-  const cpsIndex = correctTimes.length ? Math.round(145 - (medianCorrectTime / 1000) * 1.5) : 70;
+  // Based on ratio of actual time spent vs estimated time for correct answers
+  let speedRatios: number[] = [];
+  session.questionOrder.forEach(qId => {
+    const ans = session.answers[qId];
+    const q = qMap.get(qId);
+    if (ans && q && ans.selectedAnswer === q.correctAnswer) {
+      // ratio < 1 means faster than expected
+      speedRatios.push(ans.timeSpent / (q.estimatedTime * 1000));
+    }
+  });
+  
+  const medianRatio = speedRatios.length ? median(speedRatios) : 1;
+  // If median ratio is 0.5 (half the time), they are very fast (score ~130+)
+  // If median ratio is 1.0 (exact time), they are average (score ~100)
+  // If median ratio is 2.0 (double time), they are slow (score ~70)
+  // Base formula: 100 + (1 - ratio) * 60
+  // e.g. ratio 0.5 -> 100 + 0.5 * 60 = 130
+  // e.g. ratio 1.0 -> 100 + 0 * 60 = 100
+  // e.g. ratio 1.5 -> 100 - 0.5 * 60 = 70
+  let cpsIndex = Math.round(100 + (1 - medianRatio) * 60);
   const cognitiveProcessingSpeed = Math.max(70, Math.min(145, cpsIndex));
+
+  // Helper for sub-score accuracy averaging, ignoring categories that weren't attempted
+  const getAvgAcc = (cats: QuestionCategory[]) => {
+    const validAccs = cats
+      .map(c => catResult[c])
+      .filter(res => res && res.attempted > 0)
+      .map(res => res.accuracy);
+    return validAccs.length > 0 ? average(validAccs) : (rawScore / (session.questionOrder.length || 1));
+  };
 
   // 3. Working Memory Capacity (WMC)
   // Accuracy in 'Working-Memory Style', 'Spatial Reasoning', 'Logical Deduction'
-  const wmAcc = ((catResult['Working-Memory Style']?.accuracy || 0) + 
-                (catResult['Spatial Reasoning']?.accuracy || 0) + 
-                (catResult['Logical Deduction']?.accuracy || 0)) / 3;
+  const wmAcc = getAvgAcc(['Working-Memory Style', 'Spatial Reasoning', 'Logical Deduction']);
   const workingMemoryCapacity = Math.round(70 + (wmAcc * 70));
 
   // 4. Fluid Intelligence (Gf)
   // Pattern recognition, spatial, logic
-  const gfAcc = ((catResult['Visual Pattern']?.accuracy || 0) + 
-                (catResult['Number Sequences']?.accuracy || 0) + 
-                (catResult['Letter Sequences']?.accuracy || 0)) / 3;
+  const gfAcc = getAvgAcc(['Visual Pattern', 'Number Sequences', 'Letter Sequences']);
   const fluidIntelligence = Math.round(70 + (gfAcc * 70));
 
   // 5. Crystallized Intelligence (Gc)
   // Replaced with structured math & logic
-  const gcAcc = ((catResult['Algorithmic Reasoning']?.accuracy || 0) + 
-                (catResult['Mathematical Logic']?.accuracy || 0)) / 2;
+  const gcAcc = getAvgAcc(['Algorithmic Reasoning', 'Mathematical Logic']);
   const crystallizedIntelligence = Math.round(70 + (gcAcc * 70));
 
   // 6. Multi-dimensional G-factor Score
