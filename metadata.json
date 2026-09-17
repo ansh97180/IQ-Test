@@ -1,0 +1,6 @@
+{
+  "name": "PatternIQ",
+  "description": "A professional browser-based reasoning assessment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
